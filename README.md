@@ -7,6 +7,18 @@
 [![Django](https://img.shields.io/badge/Django-4.2%20%7C%205.2%20%7C%206.0-green)](https://www.djangoproject.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B%20to%203.13-blue)](https://www.python.org/)
 
+## 📦 Installation
+
+```bash
+# Add the marketplace
+/plugin marketplace add dev-muhammad/claude-django
+
+# Install the plugin
+/plugin install claude-django@claude-django-marketplace
+```
+
+Restart Claude Code to load the plugin.
+
 ## ✨ Features
 
 ### 🚀 Quick Commands
@@ -52,27 +64,6 @@ This plugin fully supports both the latest and current Django versions:
 | **Composite Primary Keys** | 5.2+ | ✅ `/django:model` |
 | **Async ORM Operations** | 5.1+ | ✅ `/django:view` |
 | **Async Session API** | 5.1+ | ✅ `setup-auth` skill |
-
-## 📦 Installation
-
-### Option 1: Clone to Plugins Directory
-```bash
-git clone https://github.com/dev-muhammad/claude-django.git \
-  ~/.claude/plugins/claude-django
-```
-
-### Option 2: Symlink for Development
-```bash
-cd /path/to/claude-django
-ln -s "$(pwd)/.claude/plugins/claude-django" ~/.claude/plugins/claude-django
-```
-
-### Option 3: Copy Plugin Files
-```bash
-cp -r .claude/plugins/claude-django ~/.claude/plugins/
-```
-
-Restart Claude Code to load the plugin.
 
 ## 🎓 Usage
 

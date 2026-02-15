@@ -11,16 +11,19 @@ Thank you for your interest in contributing to claude-django! This document prov
 - Python 3.10+ and Django 3.2+ for testing
 
 ### Development Setup
+
 ```bash
 # Fork and clone the repository
 git clone https://github.com/dev-muhammad/claude-django.git
 cd claude-django
-
-# Create symlink for local development
-ln -s "$(pwd)/.claude/plugins/claude-django" ~/.claude/plugins/claude-django
-
-# Restart Claude Code to test changes
 ```
+
+**Testing the Plugin**
+```bash
+# Run Claude with plugin from current directory
+claude --plugin-dir .claude/plugins/claude-django
+```
+This loads the plugin directly from your repository—perfect for rapid iteration without affecting your global plugin installation.
 
 ## 📁 Project Structure
 
@@ -31,9 +34,8 @@ claude-django/
 │   ├── commands/            # Slash commands (.md files)
 │   ├── skills/              # Interactive skills (.md files)
 │   ├── agents/              # Autonomous agents (.md files)
-│   └── hooks/               # Event hooks (.md files)
-├── examples/                # Example outputs
-├── tests/                   # Test cases
+│   ├── hooks/               # Event hooks (.md files)
+│   └── docs/                # Reference documentation
 ├── README.md
 ├── LICENSE
 └── CONTRIBUTING.md

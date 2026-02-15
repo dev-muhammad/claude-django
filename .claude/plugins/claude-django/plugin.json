@@ -1,8 +1,23 @@
 {
   "name": "claude-django",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Django Developer plugin for Claude Code - Boost your Django productivity with intelligent commands, skills, and agents. Updated for Django 6.0.2 (STS) and Django 5.2.11 (LTS)!",
   "author": {
-    "name": "Muhammad Abdugafarov"
-  }
+    "name": "Muhammad Abdugafarov",
+    "url": "https://github.com/dev-muhammad"
+  },
+  "homepage": "https://github.com/dev-muhammad/claude-django",
+  "repository": "https://github.com/dev-muhammad/claude-django",
+  "license": "MIT",
+  "keywords": [
+    "django",
+    "python",
+    "web",
+    "rest-api",
+    "async",
+    "drf",
+    "background-tasks",
+    "csp",
+    "composite-pk"
+  ]
 }

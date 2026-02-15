@@ -1,0 +1,13 @@
+{
+  "name": "claude-django-marketplace",
+  "description": "Django Developer plugin for Claude Code marketplace",
+  "plugins": [
+    {
+      "name": "claude-django",
+      "source": {
+        "source": "path",
+        "path": "./.claude/plugins/claude-django"
+      }
+    }
+  ]
+}
