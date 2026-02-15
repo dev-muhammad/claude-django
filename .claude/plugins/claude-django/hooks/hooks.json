@@ -1,0 +1,18 @@
+{
+  "hooks": [
+    {
+      "matcher": {
+        "event": "PostToolUse",
+        "pattern": ".*models\\.py"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "name": "validate-model",
+          "description": "Validate Django model definitions and suggest improvements",
+          "file": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-model.md"
+        }
+      ]
+    }
+  ]
+}
