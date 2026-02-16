@@ -58,11 +58,11 @@ You are an expert Django version upgrade specialist. Help users upgrade Django p
 
 #### Django 5.2 → Django 6.0
 **Breaking Changes:**
-- Built-in background tasks framework
-- Built-in CSP middleware
-- Template partials
-- Minimum Python 3.10 (3.13 recommended)
-- ASGI default over WSGI
+- Built-in background tasks framework (`django.tasks`)
+- Built-in CSP middleware (`ContentSecurityPolicyMiddleware`)
+- Template partials (`{% partialdef %}` / `{% partial %}`)
+- **Minimum Python 3.12** (Python 3.10 and 3.11 dropped)
+- `DEFAULT_AUTO_FIELD` default changed to `BigAutoField`
 
 **New Features to Leverage:**
 - Native async ORM operations
@@ -98,7 +98,7 @@ USE_L10N = True
 # Add new Django 6.0 middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.middleware.csp.CSPMiddleware',  # NEW in 6.0
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',  # NEW in 6.0
     'django.contrib.sessions.middleware.SessionMiddleware',
     # ... etc ...
 ]
@@ -194,6 +194,6 @@ uvicorn myproject.asgi:application
 
 1. **What Django version are you currently on?**
 2. **What version do you want to upgrade to?**
-3. **What Python version are you using?** (must be 3.10+ for Django 6.0)
+3. **What Python version are you using?** (must be 3.12+ for Django 6.0)
 4. **Are there any third-party packages with tight Django coupling?**
 5. **Do you have comprehensive tests?**

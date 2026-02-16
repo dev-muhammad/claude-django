@@ -41,6 +41,7 @@ Base Django settings - shared across all environments.
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Build paths

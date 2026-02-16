@@ -22,32 +22,56 @@ Django 6.0 introduced **template partials** - small, named template fragments th
 ## Basic Syntax
 
 ### Defining a Partial
+Use `{% partialdef %}` to define a named fragment within a template:
+
 ```django
-{% partial "card" %}
+{% partialdef "card" %}
 <div class="card">
     <h2>{{ title }}</h2>
     <p>{{ content }}</p>
 </div>
-{% endpartial %}
+{% endpartialdef %}
 ```
 
-### Rendering a Partial
+### Rendering a Partial Inline
+Use `{% partial %}` to render a defined partial in the same template:
+
 ```django
-<!-- Render the partial with context -->
-{% partial "card" title="Hello" content="World" %}
+{% partialdef "card" %}
+<div class="card">
+    <h2>{{ title }}</h2>
+    <p>{{ content }}</p>
+</div>
+{% endpartialdef %}
+
+<!-- Render the partial here -->
+{% partial "card" %}
 ```
 
-### Or from a View
+### Rendering from a View
+Reference a partial using the `template_name#partial_name` syntax:
+
 ```python
-from django.views import View
 from django.shortcuts import render
 
-class MyView(View):
-    def get(self, request):
-        return render(request, 'my_template.html', {
-            'partial': 'card',
-            'partial_context': {'title': 'Hello', 'content': 'World'}
-        })
+def card_fragment(request):
+    return render(request, 'my_template.html#card', {
+        'title': 'Hello',
+        'content': 'World',
+    })
+```
+
+### Using with include
+```django
+{% include "my_template.html#card" %}
+```
+
+### Using with get_template
+```python
+from django.template.loader import get_template
+
+template = get_template('my_template.html#card')
+html = template.render({'title': 'Hello', 'content': 'World'})
 ```
 
 ## Partial Types
@@ -55,20 +79,26 @@ class MyView(View):
 ### 1. Component Partials
 Self-contained UI components:
 
-**templates/partials/button.html**
+**templates/components/buttons.html**
 ```django
-{% partial "button" %}
-<button class="btn {{ class|default:'btn-primary' }}" {{ attrs|safe }}>
+{% partialdef "primary" %}
+<button class="btn btn-primary" {{ attrs|safe }}>
     {% if icon %}{{ icon|safe }}{% endif %}
     {{ label }}
 </button>
-{% endpartial %}
+{% endpartialdef %}
+
+{% partialdef "danger" %}
+<button class="btn btn-danger" {{ attrs|safe }}>
+    {{ label }}
+</button>
+{% endpartialdef %}
 ```
 
 **Usage:**
 ```django
-{% partial "button" label="Click me" class="btn-large" %}
-{% partial "button" label="Delete" class="btn-danger" icon="&times;" %}
+{% include "components/buttons.html#primary" with label="Click me" %}
+{% include "components/buttons.html#danger" with label="Delete" %}
 ```
 
 ### 2. Section Partials
@@ -76,7 +106,7 @@ Page sections (headers, footers, sidebars):
 
 **templates/partials/header.html**
 ```django
-{% partial "header" %}
+{% partialdef "header" %}
 <header class="header">
     <div class="container">
         <h1>{{ site_name }}</h1>
@@ -87,15 +117,15 @@ Page sections (headers, footers, sidebars):
         </nav>
     </div>
 </header>
-{% endpartial %}
+{% endpartialdef %}
 ```
 
 ### 3. Form Partials
 Reusable form fields:
 
-**templates/partials/field.html**
+**templates/partials/forms.html**
 ```django
-{% partial "field" %}
+{% partialdef "field" %}
 <div class="form-group {{ class|default:'' }}">
     <label for="{{ field.id_for_label }}">{{ label }}</label>
     {{ field }}
@@ -106,7 +136,7 @@ Reusable form fields:
     <div class="errors">{{ field.errors }}</div>
     {% endif %}
 </div>
-{% endpartial %}
+{% endpartialdef %}
 ```
 
 **Usage:**
@@ -114,7 +144,7 @@ Reusable form fields:
 <form method="post">
     {% csrf_token %}
     {% for field in form %}
-        {% partial "field" field=field label=field.label %}
+        {% include "partials/forms.html#field" with field=field label=field.label %}
     {% endfor %}
     <button type="submit">Submit</button>
 </form>
@@ -122,37 +152,53 @@ Reusable form fields:
 
 ## HTMX + Partials
 
-Perfect combination for dynamic UIs:
+Perfect combination for dynamic UIs. Define the partial inline and render only the fragment on HTMX requests:
 
-### Button that loads content
+### Template with inline partial
 ```django
-<button hx-get="/items/123/partial/"
-        hx-swap="outerHTML"
-        hx-target="#item-123">
-    Refresh
-</button>
+<!-- items/list.html -->
+{% partialdef "item-row" %}
+<tr id="item-{{ item.pk }}">
+    <td>{{ item.name }}</td>
+    <td>{{ item.price }}</td>
+    <td>
+        <button hx-get="{% url 'item-detail' item.pk %}"
+                hx-target="#item-{{ item.pk }}"
+                hx-swap="outerHTML">
+            Refresh
+        </button>
+    </td>
+</tr>
+{% endpartialdef %}
 
-<div id="item-123">
-    {% partial "item-detail" item=item %}
-</div>
+<table>
+    {% for item in items %}
+        {% partial "item-row" %}
+    {% endfor %}
+</table>
 ```
 
-### View returns partial
+### View returns only the partial fragment
 ```python
-def item_detail_partial(request, pk):
+def item_detail(request, pk):
     item = get_object_or_404(Item, pk=pk)
-    response = render(request, 'partials/item-detail.html', {'item': item})
-    response.headers['HX-Trigger'] = 'itemUpdated'
-    return response
+
+    # Return only the partial for HTMX requests
+    if request.headers.get('HX-Request'):
+        return render(request, 'items/list.html#item-row', {'item': item})
+
+    # Return the full page otherwise
+    return render(request, 'items/list.html', {'items': Item.objects.all()})
 ```
 
-## Partial with Slots
+## Inline Rendering Control
 
-Create flexible partials with slots:
+By default, `{% partialdef %}` renders the content where it's defined AND makes it available as a named partial. Use `inline=False` to define without rendering:
 
 ```django
-{% partial "modal" %}
-<div class="modal {{ class|default:'' }}" id="{{ id|default:'modal' }}">
+{# Define but don't render here #}
+{% partialdef "modal" inline=False %}
+<div class="modal" id="{{ id|default:'modal' }}">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -160,55 +206,15 @@ Create flexible partials with slots:
                 <button class="close">&times;</button>
             </div>
             <div class="modal-body">
-                {% slot body %}Default body{% endslot %}
+                {{ body }}
             </div>
-            {% if footer %}
-            <div class="modal-footer">
-                {% slot footer %}Default footer{% endslot %}
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
-{% endpartial %}
-```
+{% endpartialdef %}
 
-**Usage:**
-```django
-{% partial "modal" id="confirm-modal" title="Confirm" %}
-    {% fill body %}
-        <p>Are you sure you want to delete this?</p>
-    {% endfill %}
-    {% fill footer %}
-        <button class="btn-cancel">Cancel</button>
-        <button class="btn-danger">Delete</button>
-    {% endfill %}
-{% endpartial %}
-```
-
-## Partial Context Inheritance
-
-Partials inherit parent context:
-
-```django
-<!-- parent.html -->
-{% partial "child" %}
-<!-- Can access parent_var -->
-{% endpartial %}
-```
-
-### Isolate context when needed
-```django
-{% partial "child" only %}
-<!-- Only has explicitly passed variables -->
-{% endpartial %}
-```
-
-### Merge contexts
-```django
-{% partial "child" with foo="bar" %}
-<!-- Has parent context plus foo -->
-{% endpartial %}
+{# Render it later with specific context #}
+{% partial "modal" with id="confirm-modal" title="Confirm Delete" body="Are you sure?" %}
 ```
 
 ## Organizing Partials
@@ -217,13 +223,12 @@ Partials inherit parent context:
 templates/
 ├── partials/
 │   ├── components/
-│   │   ├── button.html
-│   │   ├── card.html
-│   │   └── modal.html
+│   │   ├── buttons.html      # Multiple partialdef per file
+│   │   ├── cards.html
+│   │   └── modals.html
 │   ├── forms/
-│   │   ├── field.html
-│   │   ├── errors.html
-│   │   └── widgets/
+│   │   ├── fields.html
+│   │   └── errors.html
 │   ├── layout/
 │   │   ├── header.html
 │   │   ├── footer.html
@@ -251,21 +256,25 @@ TEMPLATES = [
 
 Use in templates:
 ```django
-{% load partials %}
-{% partial "blog:post-card" post=post %}
+{% include "blog/partials.html#post-card" with post=post %}
+```
+
+Or from views:
+```python
+return render(request, 'blog/partials.html#post-card', {'post': post})
 ```
 
 ## Best Practices
 
 1. **Keep partials small** - Single responsibility
-2. **Use clear names** - `components/card.html` not `card.html`
-3. **Default values** - Use `|default` for optional args
+2. **Use clear names** - `{% partialdef "user-card" %}` not `{% partialdef "c1" %}`
+3. **Default values** - Use `|default` for optional context variables
 4. **Document context** - Comment what variables partials expect
-5. **Test independently** - Partials should render standalone
-6. **Version controlled** - Track partial changes like code
+5. **Use `inline=False`** - When defining reusable fragments that shouldn't render in place
+6. **Use `#` syntax** - `template.html#partial` for HTMX and fragment rendering
 
 Ask the user:
 1. What type of partial do you need? (component, section, form)
 2. What context variables does it need?
-3. Should it have slots for flexible content?
-4. Will it be used with HTMX?
+3. Will it be used with HTMX?
+4. Should the partial render inline or be defined for later use?
