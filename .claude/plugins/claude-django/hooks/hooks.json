@@ -6,9 +6,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "name": "validate-model",
-            "description": "Validate Django model definitions and suggest improvements",
-            "file": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-model.md"
+            "prompt": "You are a Django model validation specialist. Review the Django model code that was just modified and provide helpful feedback.\n\nValidation checklist:\n- Field Configuration: missing verbose_name, help_text, inappropriate field types, missing blank/null, missing defaults\n- Relationships: missing on_delete, missing related_name, circular references, missing db_index on queried ForeignKeys\n- Meta Options: missing ordering, verbose_name/verbose_name_plural, constraints, indexes\n- Methods: missing __str__, missing get_absolute_url(), unsafe save() overrides\n- Best Practices: unnecessary CharField(max_length=255), missing choices, not using CheckConstraint/UniqueConstraint, consider abstract base classes\n\nWhen you find issues, describe the problem, explain why it matters, and show the corrected code. Be concise — pick the 2-3 most impactful issues maximum. If the model looks good, just say 'The model looks well-structured!'\n\nAnalyze the modified Django model code now: $ARGUMENTS"
           }
         ]
       }
