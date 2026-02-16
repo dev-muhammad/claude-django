@@ -8,7 +8,7 @@ Thank you for your interest in contributing to claude-django! This document prov
 - Claude Code installed and working
 - Basic understanding of Django
 - Familiarity with YAML frontmatter (for commands/skills)
-- Python 3.10+ and Django 3.2+ for testing
+- Python 3.12+ and Django 4.2+ for testing
 
 ### Development Setup
 

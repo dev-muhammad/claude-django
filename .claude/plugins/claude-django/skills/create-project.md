@@ -62,7 +62,7 @@ project_name/
 ├── config/                   # Additional config
 │   ├── urls.py              # Main URL config
 │   ├── middleware.py        # Custom middleware
-│   └── celery.py            # Celery config if needed
+│   └── tasks.py             # Django 6.0 tasks config (or Celery for < 6.0)
 ├── .env.example             # Environment variables template
 ├── .gitignore
 ├── requirements/
@@ -89,7 +89,7 @@ project_name/
 - AUTH_PASSWORD_VALIDATORS
 - LANGUAGE_CODE
 - TIME_ZONE
-- USE_I18N, USE_TZ, USE_L10N
+- USE_I18N, USE_TZ
 - STATIC_URL, STATIC_ROOT
 - MEDIA_URL, MEDIA_ROOT
 
@@ -137,5 +137,6 @@ REDIS_URL=redis://localhost:6379/0
 ### Production
 - sentry-sdk (error tracking)
 - django-storages (S3)
-- celery (background tasks)
 - redis (caching/queue)
+- Django 6.0: Built-in tasks framework (no Celery needed for most use cases)
+- Django < 6.0: celery + redis (background tasks)

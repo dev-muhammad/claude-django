@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-brightgreen)](https://claude.com/claude-code)
 [![Django](https://img.shields.io/badge/Django-4.2%20%7C%205.2%20%7C%206.0-green)](https://www.djangoproject.com/)
-[![Python](https://img.shields.io/badge/Python-3.10%2B%20to%203.13-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12%2B%20to%203.14-blue)](https://www.python.org/)
 
 ## 📦 Installation
 
@@ -107,11 +107,15 @@ Use the "migrate-to-async" skill for async migration
 - **Django 6.0.2** - Latest with new features (background tasks, CSP, partials)
 
 ### Python Support
-| Python | 3.10 | 3.11 | 3.12 | 3.13 |
-|--------|-------|-------|-------|-------|
-| Status |  ✅   |  ✅   |  ✅   |  ✅   |
+| Python | Django 4.2 | Django 5.0–5.2 | Django 6.0 |
+|--------|------------|----------------|------------|
+| 3.10   | ✅         | ✅             | ❌         |
+| 3.11   | ✅         | ✅             | ❌         |
+| 3.12   | ✅         | ✅             | ✅         |
+| 3.13   | ✅         | ✅             | ✅         |
+| 3.14   | ❌         | ❌             | ✅         |
 
-Python 3.10+ is required for Django 6.0. **Python 3.12+ is recommended for new projects.**
+**Python 3.12+** is required for Django 6.0. Django 5.2 is the last version supporting Python 3.10/3.11.
 
 ### Which Django Version Should You Use?
 
@@ -153,12 +157,19 @@ Python 3.10+ is required for Django 6.0. **Python 3.12+ is recommended for new p
 
 ### Django 6.0 Background Task
 ```python
+from django.core.mail import send_mail
 from django.tasks import task
 
-@task(schedule=crontab(hour='*/6'))
-def cleanup_expired_sessions():
-    from django.contrib.sessions.models import Session
-    Session.objects.filter(expire_date__lt=timezone.now()).delete()
+@task
+def email_users(emails, subject, message):
+    return send_mail(subject, message, None, emails)
+
+# Enqueue for background execution
+email_users.enqueue(
+    emails=["user@example.com"],
+    subject="You have a message",
+    message="Hello there!",
+)
 ```
 
 ### Django 5.2 Composite Primary Key
@@ -219,7 +230,7 @@ async def product_detail(request, pk):
 
 **Supported Versions:**
 - Django: 4.2, 5.0, 5.1, **5.2 ()**, **6.0 ()**
-- Python: 3.10, 3.11, 3.12, 3.13
+- Python: 3.12, 3.13, 3.14 (Django 6.0); 3.10+ (Django 4.2–5.2)
 
 **Documentation:**
 - Comprehensive README with Django vs guide
@@ -238,7 +249,7 @@ This plugin is actively maintained and growing. Here's what we're planning:
 | `/django:signal` | Generate Django signals with best practices | 📋 Planned |
 | `/django:middleware` | Create custom middleware with async support | 📋 Planned |
 | `/django:management` | Generate custom management commands | 📋 Planned |
-| `/django:middleware` | Create template with block inheritance | 📋 Planned |
+| `/django:template` | Create template with block inheritance | 📋 Planned |
 | `/django:cache` | Configure caching strategies (Redis, Memcached) | 📋 Planned |
 | `/django:api-viewset` | Generate DRF ViewSets with CRUD + actions | 📋 Planned |
 

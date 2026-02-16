@@ -32,61 +32,22 @@ python manage.py migrate
 ### Step 3: Configuration
 ```python
 # settings/base.py
-INSTALLED_APPS = [
-    # ...
-    'django.tasks',
-]
-
-MIDDLEWARE = [
-    # ...
-    'django.tasks.middleware.TaskMiddleware',  # Optional, for request-bound tasks
-]
-
 TASKS = {
     'default': {
         'BACKEND': 'django.tasks.backends.database.DatabaseBackend',
-        'RESULT_EXPIRES': 3600,
-        'MAX_RETRIES': 3,
-        'RETRY_BACKOFF': True,
     },
-    'high_priority': {
-        'BACKEND': 'django.tasks.backends.database.DatabaseBackend',
-        'MAX_RETRIES': 5,
-    },
-}
-
-# Task routing (optional)
-TASK_ROUTES = {
-    'app.tasks.send_email': 'high_priority',
-    'app.tasks.process_image': 'default',
 }
 ```
+
+> **Note:** Django handles task creation and queuing. External worker processes are required to execute enqueued tasks. Refer to Django 6.0 deployment docs for worker setup.
 
 ### Step 4: Worker Setup
 
-Create `procfile.sh` or supervisor config:
-```bash
-#!/bin/bash
-# Start task workers
-python manage.py task_worker --concurrency=4 --loglevel=info
-```
+Django 6.0 handles task creation and queuing. External worker processes must be set up to execute tasks. Refer to the Django 6.0 deployment documentation for your specific backend's worker requirements.
 
-For development:
 ```bash
-# Single worker, verbose
-python manage.py task_worker --concurrency=1 --loglevel=debug
-```
-
-For production (supervisor):
-```ini
-[program:django-tasks]
-command=/path/to/venv/bin/python manage.py task_worker --concurrency=4
-directory=/path/to/project
-user=www-data
-autostart=true
-autorestart=true
-redirect_stderr=true
-stdout_logfile=/var/log/django-tasks.log
+# Run migrations for the database backend
+python manage.py migrate
 ```
 
 ### Step 5: Create Tasks Directory Structure
@@ -110,14 +71,14 @@ Based on user needs, generate:
 
 ### Email Task Template
 ```python
-from django.tasks import shared_task
+from django.tasks import task
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
+import logging
 
-@shared_task(
-    max_retries=3,
-    retry_backoff=True,
-)
+logger = logging.getLogger(__name__)
+
+@task
 def send_welcome_email(user_id):
     User = get_user_model()
     try:
@@ -129,57 +90,45 @@ def send_welcome_email(user_id):
             [user.email],
         )
     except User.DoesNotExist:
-        # Don't retry if user doesn't exist
         logger.warning(f'User {user_id} not found for welcome email')
+
+# Usage: send_welcome_email.enqueue(user_id=42)
 ```
 
-### Scheduled Task Template
+### Cleanup Task Template
 ```python
-from django.tasks import shared_task
-from django.tasks.schedule import crontab
+from django.tasks import task
 from django.utils import timezone
+import logging
 
-@shared_task(schedule=crontab(hour=0, minute=0))  # Daily at midnight
+logger = logging.getLogger(__name__)
+
+@task
 def daily_cleanup():
     from myapp.models import ExpiredToken
     count = ExpiredToken.objects.filter(
         expires_at__lt=timezone.now()
     ).delete()[0]
     logger.info(f'Cleaned up {count} expired tokens')
+
+# Usage: daily_cleanup.enqueue()
 ```
 
 ## Monitoring
 
-### Admin Integration
-```python
-# admin.py
-from django.tasks import admin
-admin.site.register(django.tasks.models.TaskResult)
-```
-
-### Monitoring Views
-```python
-def task_stats(request):
-    from django.tasks.models import TaskResult
-    stats = {
-        'pending': TaskResult.objects.filter(status='pending').count(),
-        'started': TaskResult.objects.filter(status='started').count(),
-        'success': TaskResult.objects.filter(status='success').count(),
-        'failure': TaskResult.objects.filter(status='failure').count(),
-    }
-    return JsonResponse(stats)
-```
+Refer to the Django 6.0 tasks documentation for backend-specific monitoring and result inspection capabilities. The database backend stores task results that can be queried for status tracking.
 
 ## Testing Tasks
 ```python
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from myapp.tasks import my_task
 
 class TaskTests(TestCase):
+    @override_settings(TASKS={'default': {'BACKEND': 'django.tasks.backends.immediate.ImmediateBackend'}})
     def test_task_execution(self):
-        result = my_task.delay(arg1, arg2)
-        self.assertTrue(result.ready())
-        self.assertEqual(result.get(), expected_value)
+        # ImmediateBackend executes tasks synchronously for testing
+        result = my_task.enqueue(arg1=val1, arg2=val2)
+        self.assertEqual(result.status, result.COMPLETE)
 ```
 
 ## Ask the user:

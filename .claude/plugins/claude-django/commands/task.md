@@ -36,60 +36,60 @@ def send_welcome_email(user_id):
     )
 ```
 
-### 2. **Scheduled Tasks**
-Run tasks on a schedule:
+### 2. **Enqueuing Tasks**
+Use `.enqueue()` to dispatch a task for background execution:
 
 ```python
 from django.tasks import task
-from django.tasks.schedule import crontab
 
-@task(schedule=crontab(minute='*/15'))
-def cleanup_expired_sessions():
-    from django.contrib.sessions.models import Session
-    Session.objects.filter(expire_date__lt=timezone.now()).delete()
+@task
+def send_welcome_email(user_id):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    user = User.objects.get(pk=user_id)
+    send_mail('Welcome!', 'Thanks for signing up.', 'from@example.com', [user.email])
+
+# Dispatch the task
+result = send_welcome_email.enqueue(user_id=42)
 ```
 
-### 3. **Retry on Failure**
-Automatic retry with exponential backoff:
+### 3. **Task Results**
+Check the status and result of enqueued tasks:
 
 ```python
-from django.tasks import task
-from django.tasks.retry import Retry
+result = send_welcome_email.enqueue(user_id=42)
 
-@task(
-    max_retries=3,
-    retry_backoff=True,
-    retry_backoff_max=300,
-)
-def process_payment(order_id):
-    # Will retry up to 3 times if exception is raised
-    pass
+# Check task status
+print(result.status)        # PENDING, RUNNING, COMPLETE, FAILED
+print(result.id)            # Unique task ID
+
+# Get result when complete
+if result.status == result.COMPLETE:
+    value = result.result
 ```
 
-### 4. **Task Chaining**
-Run tasks in sequence:
+### 4. **Task Sequencing**
+Run tasks in sequence by enqueuing from within a task:
 
 ```python
-from django.tasks import chain
-
+@task
 def process_order(order_id):
-    workflow = chain(
-        validate_order.s(order_id),
-        charge_payment.s(),
-        send_confirmation.s(),
-    )
-    workflow()
+    validate_order(order_id)
+    charge_payment.enqueue(order_id=order_id)
+
+@task
+def charge_payment(order_id):
+    # After payment, enqueue confirmation
+    send_confirmation.enqueue(order_id=order_id)
 ```
 
-### 5. **Task Groups**
-Run tasks in parallel:
+### 5. **Parallel Task Dispatch**
+Enqueue multiple tasks concurrently:
 
 ```python
-from django.tasks import group
-
 def notify_all_users(message):
-    tasks = [send_email.s(user_id, message) for user_id in user_ids]
-    group(tasks)()
+    for user_id in user_ids:
+        send_email.enqueue(user_id=user_id, message=message)
 ```
 
 ## Configuration
@@ -100,36 +100,15 @@ def notify_all_users(message):
 TASKS = {
     'default': {
         'BACKEND': 'django.tasks.backends.database.DatabaseBackend',
-        'RESULT_EXPIRES': 3600,  # Results cached for 1 hour
-        'MAX_RETRIES': 3,
-        'RETRY_BACKOFF': True,
     }
 }
-
-# Task worker process
-# Run with: python manage.py task_worker
 ```
 
-### Installation
-```python
-INSTALLED_APPS = [
-    # ...
-    'django.tasks',
-]
-```
+> **Important:** Django handles task creation and queuing. External worker processes are required to execute enqueued tasks. See Django's deployment docs for worker setup.
 
 ### Migration
 ```bash
 python manage.py migrate
-```
-
-### Starting Worker
-```bash
-# Development
-python manage.py task_worker
-
-# Production with multiple workers
-python manage.py task_worker --concurrency 4
 ```
 
 ## Task Best Practices
@@ -148,33 +127,29 @@ python manage.py task_worker --concurrency 4
        user = User.objects.get(pk=user_id)
    ```
 
-2. **Use .delay() to execute**
+2. **Use .enqueue() to dispatch**
    ```python
-   # Trigger the task
-   send_welcome_email.delay(user_id)
+   # Dispatch the task for background execution
+   result = send_welcome_email.enqueue(user_id=user_id)
    ```
 
 3. **Handle task results**
    ```python
-   result = my_task.delay(arg1, arg2)
+   result = my_task.enqueue(arg1=val1, arg2=val2)
    task_id = result.id
 
    # Check status
-   result = AsyncResult(task_id)
-   if result.ready():
-       value = result.get()
+   print(result.status)  # PENDING, RUNNING, COMPLETE, FAILED
+   if result.status == result.COMPLETE:
+       value = result.result
    ```
 
-4. **Use task decorators properly**
+4. **Use the @task decorator**
    ```python
-   from django.tasks import task, shared_task
+   from django.tasks import task
 
-   @task  # Only for this project
+   @task
    def my_task():
-       pass
-
-   @shared_task  # Can be used in reusable apps
-   def shared_task():
        pass
    ```
 
@@ -186,25 +161,35 @@ python manage.py task_worker --concurrency 4
 def send_email_async(subject, message, to):
     from django.core.mail import send_mail
     send_mail(subject, message, 'from@example.com', [to])
+
+# Usage
+send_email_async.enqueue(subject="Hello", message="World", to="user@example.com")
 ```
 
 ### Image Processing
 ```python
 @task
 def generate_thumbnail(image_id, sizes):
-    from PIL import Image
-    image = Image.objects.get(pk=image_id)
-    img = Image.open(image.file.path)
+    from myapp.models import UploadedImage
+    from PIL import Image as PILImage
+    image = UploadedImage.objects.get(pk=image_id)
+    img = PILImage.open(image.file.path)
     # Generate thumbnails...
+
+# Usage
+generate_thumbnail.enqueue(image_id=42, sizes=[100, 200, 400])
 ```
 
 ### Webhook Calls
 ```python
-@task(max_retries=5)
+@task
 def send_webhook(url, payload):
     import requests
     response = requests.post(url, json=payload, timeout=10)
     response.raise_for_status()
+
+# Usage
+send_webhook.enqueue(url="https://api.example.com/hook", payload={"event": "order.created"})
 ```
 
 Ask the user:

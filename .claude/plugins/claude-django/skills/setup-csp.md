@@ -27,15 +27,24 @@ Ask the user:
 
 ```python
 # settings/base.py
-INSTALLED_APPS = [
-    # ...
-    'django.csp',  # Django 6.0 built-in
-]
+from django.utils.csp import CSP
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.middleware.csp.CSPMiddleware',  # Django 6.0 built-in
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',  # Django 6.0 built-in
     # ... other middleware ...
+]
+
+TEMPLATES = [
+    {
+        # ...
+        'OPTIONS': {
+            'context_processors': [
+                # ... existing processors ...
+                'django.template.context_processors.csp',  # For nonce support
+            ],
+        },
+    },
 ]
 ```
 
@@ -45,71 +54,99 @@ Based on user's security level and services, generate appropriate configuration.
 
 #### Relaxed Configuration
 ```python
+from django.utils.csp import CSP
+
 # Good for development or internal tools
-CSP_DEFAULT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'")
-CSP_IMG_SRC = ("'self'", "data:", "https:")
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'")
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
-CSP_REPORT_ONLY = True  # Start in report-only mode
+SECURE_CSP = {
+    "default-src": [CSP.SELF, CSP.UNSAFE_INLINE, CSP.UNSAFE_EVAL],
+    "img-src": [CSP.SELF, "data:", "https:"],
+    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE, CSP.UNSAFE_EVAL],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+}
 ```
 
 #### Moderate Configuration
 ```python
+from django.utils.csp import CSP
+
 # Recommended for most public-facing apps
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")  # For inline scripts
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")  # For inline styles
-CSP_IMG_SRC = ("'self'", "data:", "https:")
-CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")
-CSP_CONNECT_SRC = ("'self'", "https://api.example.com")
-CSP_FRAME_ANCESTORS = ("'none'",)
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "img-src": [CSP.SELF, "data:", "https:"],
+    "font-src": [CSP.SELF, "https://fonts.gstatic.com"],
+    "connect-src": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
+}
 ```
 
 #### Strict Configuration
 ```python
-# Best security, requires nonces
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'",)
-CSP_STYLE_SRC = ("'self'",)
-CSP_IMG_SRC = ("'self'", "data:")
-CSP_FONT_SRC = ("'self'",)
-CSP_CONNECT_SRC = ("'self'",)
-CSP_FRAME_ANCESTORS = ("'none'",)
-CSP_BASE_URI = ("'none'",)
-CSP_FORM_ACTION = ("'self'",)
+from django.utils.csp import CSP
+
+# Best security, requires nonces for all inline code
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, CSP.NONCE],
+    "img-src": [CSP.SELF, "data:"],
+    "font-src": [CSP.SELF],
+    "connect-src": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
+    "base-uri": [CSP.NONE],
+    "form-action": [CSP.SELF],
+}
 ```
 
 ### Step 4: Add Third-Party Services
 
-Generate CSP directives for user's specific services:
+Generate CSP directives for user's specific services. Third-party domains are added as strings alongside CSP constants:
 
 #### Google Analytics
 ```python
-CSP_SCRIPT_SRC += ("https://www.googletagmanager.com", "https://www.google-analytics.com")
-CSP_IMG_SRC += ("https://www.google-analytics.com",)
-CSP_CONNECT_SRC += ("https://www.google-analytics.com",)
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE, "https://www.googletagmanager.com", "https://www.google-analytics.com"],
+    "img-src": [CSP.SELF, "https://www.google-analytics.com"],
+    "connect-src": [CSP.SELF, "https://www.google-analytics.com"],
+}
 ```
 
 #### Stripe
 ```python
-CSP_SCRIPT_SRC += ("https://js.stripe.com",)
-CSP_FRAME_SRC += ("https://js.stripe.com", "https://hooks.stripe.com")
-CSP_CONNECT_SRC += ("https://api.stripe.com",)
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE, "https://js.stripe.com"],
+    "frame-src": [CSP.SELF, "https://js.stripe.com", "https://hooks.stripe.com"],
+    "connect-src": [CSP.SELF, "https://api.stripe.com"],
+}
 ```
 
 #### HTMX
 ```python
-CSP_SCRIPT_SRC += ("'unsafe-eval'",)  # HTMX may need eval
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "connect-src": [CSP.SELF],
+}
+```
+
+```django
+<script src="https://unpkg.com/htmx.org@2.0" nonce="{{ csp_nonce }}"></script>
 ```
 
 ### Step 5: Set Up Reporting
 
 ```python
-# settings/base.py
-CSP_REPORT_URI = '/api/csp-report/'
-CSP_REPORT_ONLY = True  # Start with report-only
+# settings/development.py — Report-only mode for testing
+from django.utils.csp import CSP
 
-# Create view for reports
+SECURE_CSP_REPORT_ONLY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "report-uri": "/api/csp-report/",
+}
 ```
 
 ```python
@@ -117,6 +154,7 @@ CSP_REPORT_ONLY = True  # Start with report-only
 import json
 import logging
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -137,57 +175,52 @@ path('api/csp-report/', csp_report_view, name='csp_report'),
 
 #### Phase 1: Report-Only (1-2 weeks)
 ```python
-CSP_REPORT_ONLY = True
-# Monitor logs for violations
+# Use SECURE_CSP_REPORT_ONLY to monitor without blocking
+SECURE_CSP_REPORT_ONLY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "report-uri": "/api/csp-report/",
+}
 ```
 
-#### Phase 2: Moderate Enforcement (1 month)
+#### Phase 2: Enforce with unsafe-inline (1 month)
 ```python
-CSP_REPORT_ONLY = False
-# Allow unsafe-inline temporarily
+# Switch to SECURE_CSP to start enforcing
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+}
 ```
 
-#### Phase 3: Remove unsafe-inline
+#### Phase 3: Switch to nonces
 ```python
-# Implement nonce system
-CSP_SCRIPT_SRC = ("'self'", "'nonce-%s'")
+# Remove unsafe-inline, use nonces instead
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, CSP.NONCE],
+}
 ```
 
 #### Phase 4: Strict Mode
 ```python
-# Remove all unsafe-* directives
-# Use Content-Security-Policy-Report-Only header for testing
+# No unsafe-*, minimal third-party exceptions
 ```
 
-### Step 7: Nonce Implementation
+### Step 7: Using Nonces in Templates
 
-```python
-# context processor
-def csp_nonce(request):
-    import secrets
-    return {'csp_nonce': secrets.token_urlsafe(16)}
-
-# middleware
-class CSPNonceMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        import secrets
-        request.csp_nonce = secrets.token_urlsafe(16)
-        response = self.get_response(request)
-        response['Content-Security-Policy'] = (
-            f"default-src 'self'; "
-            f"script-src 'self' 'nonce-{request.csp_nonce}'"
-        )
-        return response
-```
+The `django.template.context_processors.csp` context processor provides a `csp_nonce` variable:
 
 ```django
-<!-- template -->
+<!-- Inline scripts need the nonce -->
 <script nonce="{{ csp_nonce }}">
-    // Inline script
+    document.addEventListener('DOMContentLoaded', function() {
+        // Your inline script
+    });
 </script>
+
+<!-- External scripts loaded via nonce -->
+<script src="https://unpkg.com/htmx.org@2.0" nonce="{{ csp_nonce }}"></script>
 ```
 
 ### Step 8: Testing
