@@ -1,6 +1,6 @@
 {
   "name": "claude-django",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Django Developer plugin for Claude Code - Boost your Django productivity with intelligent commands, skills, and agents. Updated for Django 6.0.2 (STS) and Django 5.2.11 (LTS)!",
   "author": {
     "name": "Muhammad Abdugafarov",
