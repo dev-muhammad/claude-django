@@ -194,6 +194,9 @@ async def product_detail(request, pk):
 
 ## 📝 Changelog
 
+### v0.1.1 (February 2026) - Bug Fix
+- Fixed `hooks.json` schema: changed `hooks` from array to record format to match Claude Code plugin specification
+
 ### v0.1.0 (February 2026) - Initial Release 🎉
 **Django 6.0.2 () + Django 5.2.11 ()**
 
