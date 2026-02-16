@@ -12,7 +12,7 @@
       "name": "claude-django",
       "source": "./.claude/plugins/claude-django",
       "description": "Django Developer plugin for Claude Code",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "web-development",
       "keywords": ["django", "python", "rest-api", "async", "drf"]
     }
